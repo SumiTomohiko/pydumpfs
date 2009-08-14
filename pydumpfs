@@ -1,0 +1,41 @@
+#! python
+# -*- coding: utf-8 -*-
+
+from getopt import getopt
+from pydumpfs import Pydumpfs
+import sys
+
+def help():
+    from os.path import basename
+    name = basename(sys.argv[0])
+    print """Usage: %(name)s [options] dest src...
+options:
+    -v, --verbose:  print verbose messages.
+    -h, --help:     print this message.
+    --version:      print version.""" % dict(name=name)
+    sys.exit(0)
+
+def version():
+    from pkg_resources import get_distribution
+    name = "pydumpfs"
+    version = get_distribution(name).version
+    print "%(name)s %(version)s" % dict(name=name, version=version)
+    sys.exit(0)
+
+verbose = False
+
+options, args = getopt(sys.argv[1:], "hv", ["help", "version", "verbose"])
+for option, value in options:
+    if option == "-h" or option == "--help":
+        help()
+    elif option == "--version":
+        version()
+    elif option == "-v" or option == "--verbose":
+        verbose = True
+if len(args) < 2:
+    help()
+
+obj = Pydumpfs(verbose=verbose)
+obj.do(args[0], *args[1:])
+
+# vim: tabstop=4 shiftwidth=4 expandtab
