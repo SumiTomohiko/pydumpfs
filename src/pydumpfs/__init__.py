@@ -221,7 +221,7 @@ class Pydumpfs(object):
 
         if prev_dir is None:
             self._copy_recursively(backup_dir, src)
-        else:
-            self._copy_incrementally(prev_dir, backup_dir, src)
+            return
+        self._copy_incrementally(prev_dir, backup_dir, src)
 
 # vim: tabstop=4 shiftwidth=4 expandtab softtabstop=4
