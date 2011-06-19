@@ -35,7 +35,9 @@ for option, value in options:
 if len(args) < 2:
     help()
 
-obj = Pydumpfs(verbose=verbose)
-obj.do(args[0], *args[1:])
+def backup(dest, src):
+    Pydumpfs(verbose=verbose).do(dest, *src)
 
-# vim: tabstop=4 shiftwidth=4 expandtab
+backup(args[0], args[1:])
+
+# vim: tabstop=4 shiftwidth=4 expandtab softtabstop=4
