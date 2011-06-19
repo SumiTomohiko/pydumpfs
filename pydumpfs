@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from getopt import getopt
-from pydumpfs import Pydumpfs
+from pydumpfs import Pydumpfs, remove_backups
 import sys
 
 def help():
@@ -38,6 +38,8 @@ if len(args) < 2:
 def backup(dest, src):
     Pydumpfs(verbose=verbose).do(dest, *src)
 
-backup(args[0], args[1:])
+dest = args[0]
+backup(dest, args[1:])
+remove_backups(dest, 93)
 
 # vim: tabstop=4 shiftwidth=4 expandtab softtabstop=4

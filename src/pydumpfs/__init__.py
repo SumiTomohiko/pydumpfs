@@ -1,13 +1,29 @@
 # -*- coding: utf-8 -*-
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from glob import glob
-from os import makedirs, stat_float_times
+from os import listdir, makedirs, stat_float_times
 from os.path import abspath, dirname, exists, isdir, islink, join, lexists
+from re import match
+from shutil import copy, copystat, rmtree
 import os
-import shutil
 import stat
 import sys
+
+def make_backup_name(timestamp):
+    milli = timestamp.microsecond // 1000
+    fmt = "%Y-%m-%d_%H:%M:%S.{milli:03d}".format(**locals())
+    return timestamp.strftime(fmt)
+
+def glob_backups(dir_):
+    digit = "[0-9]"
+    digit2 = digit * 2
+    digit3 = digit * 3
+    digit4 = digit * 4
+    date_pattern = "{digit4}-{digit2}-{digit2}".format(**locals())
+    time_pattern = "{digit2}:{digit2}:{digit2}.{digit3}".format(**locals())
+    pattern = "{date_pattern}_{time_pattern}".format(**locals())
+    return glob(join(dir_, pattern))
 
 class PydumpfsError(Exception):
     pass
@@ -18,10 +34,7 @@ class Pydumpfs(object):
         self.verbose = verbose
 
     def decide_backup_dir(self, dest):
-        now = datetime.now()
-        milli = now.microsecond // 1000
-        fmt = "%Y-%m-%d_%H:%M:%S.{milli:03d}".format(**locals())
-        return join(dest, now.strftime(fmt))
+        return join(dest, make_backup_name(datetime.now()))
 
     def do(self, dest, *src):
         if not exists(dest):
@@ -51,7 +64,7 @@ class Pydumpfs(object):
         time_pattern = "{digit}:{digit}:{digit}".format(**locals())
         pattern = "{date_pattern}_{time_pattern}".format(**locals())
         try:
-            return sorted(glob(join(dest, pattern)))[-1]
+            return sorted(glob_backups(dest))[-1]
         except IndexError:
             return None
 
@@ -98,13 +111,13 @@ class Pydumpfs(object):
     def _copystat(self, dest, src):
         self._print_debug(
             "copystat: src=%(src)s, dest=%(dest)s" % dict(src=src, dest=dest))
-        shutil.copystat(src, dest)
+        copystat(src, dest)
 
     def _copy(self, dest, src):
         self._print_debug(
             "copy: src=%(src)s, dest=%(dest)s" % dict(src=src, dest=dest))
         try:
-            shutil.copy(src, dest)
+            copy(src, dest)
         except IOError, e:
             print >> sys.stderr, \
                     "error: Can't copy %(src)s to %(dest)s (%(error)s)." \
@@ -223,5 +236,23 @@ class Pydumpfs(object):
             self._copy_recursively(backup_dir, src)
             return
         self._copy_incrementally(prev_dir, backup_dir, src)
+
+def remove_backups(dir_, days):
+    oldest = datetime.now() - timedelta(days)
+    for name in listdir(dir_):
+        m = match(r"(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})_(?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2})\.(?P<millisecond>\d{3})", name)
+        if not m:
+            continue
+        timestamp = datetime(
+            int(m.group("year")),
+            int(m.group("month")),
+            int(m.group("day")),
+            int(m.group("hour")),
+            int(m.group("minute")),
+            int(m.group("second")),
+            1000 * int(m.group("millisecond")))
+        if oldest < timestamp:
+            continue
+        rmtree(join(dir_, name))
 
 # vim: tabstop=4 shiftwidth=4 expandtab softtabstop=4

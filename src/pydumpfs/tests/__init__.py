@@ -1,22 +1,50 @@
 #! python
 # -*- coding: utf-8 -*-
 
+from datetime import datetime, timedelta
 from os import chmod, lchown, listdir, lstat, makedirs, mkfifo, readlink, remove, stat, walk
 from os.path import abspath, dirname, exists, isdir, isfile, islink, join, lexists, samefile
 from shutil import rmtree
 from stat import S_IRUSR, S_IRWXG, S_IRWXO, S_IRWXU, S_ISLNK, S_ISREG
+from tempfile import mkdtemp
 from unittest import TestCase, main
 
 from sys import path
 path.insert(0, "src")
 
-from pydumpfs import Pydumpfs, PydumpfsError
+from pydumpfs import Pydumpfs, PydumpfsError, make_backup_name, remove_backups
+
+class TestRemove(TestCase):
+
+    def setUp(self):
+        self.temp_dir = mkdtemp(prefix="pydumpfs_remove")
+
+    def tearDown(self):
+        rmtree(self.temp_dir)
+
+    def make_backup_dir(self, days):
+        name = make_backup_name(datetime.now() - timedelta(days))
+        path = join(self.temp_dir, name)
+        makedirs(path)
+        return path
+
+    def run_testee(self, days):
+        path = self.make_backup_dir(days)
+        remove_backups(self.temp_dir, 93)
+        return path
+
+    def test_delete(self):
+        path = self.run_testee(93)
+        self.failIf(exists(path))
+
+    def test_remain(self):
+        path = self.run_testee(92)
+        self.failIf(not exists(path))
 
 class TestPydumpfs(TestCase):
 
     def setUp(self):
-        import tempfile
-        self.dest_dir = tempfile.mkdtemp(prefix="pydumpfs")
+        self.dest_dir = mkdtemp(prefix="pydumpfs")
 
     def tearDown(self):
         rmtree(self.dest_dir)
