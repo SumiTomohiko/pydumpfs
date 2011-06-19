@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 
-from os import stat_float_times
-from os.path import exists
+from datetime import datetime
+from glob import glob
+from os import makedirs, stat_float_times
+from os.path import abspath, dirname, exists, isdir, islink, join, lexists
 import os
-import os.path
 import shutil
 import stat
 import sys
 
 class PydumpfsError(Exception):
-
     pass
 
 class Pydumpfs(object):
@@ -17,23 +17,20 @@ class Pydumpfs(object):
     def __init__(self, verbose=False):
         self.verbose = verbose
 
+    def decide_backup_dir(self, dest):
+        now = datetime.now()
+        milli = now.microsecond // 1000
+        fmt = "%Y-%m-%d_%H:%M:%S.{milli:03d}".format(**locals())
+        return join(dest, now.strftime(fmt))
+
     def do(self, dest, *src):
         if not exists(dest):
             raise PydumpfsError("%(dest)s doesn't exist." % { "dest": dest })
 
         stat_float_times(False)
-
         prev_dir = self._get_prev_dir(dest)
-
-        import datetime
-        now = datetime.datetime.now()
-        dir = []
-        dir.append(now.strftime("%Y"))
-        dir.append(now.strftime("%m"))
-        dir.append(now.strftime("%d"))
-        dir.append("%s.%06d" % (now.strftime("%H%M%S"), now.microsecond))
-        backup_dir = os.path.join(dest, *dir)
-        os.makedirs(backup_dir)
+        backup_dir = self.decide_backup_dir(dest)
+        makedirs(backup_dir)
 
         for d in src:
             self._do(prev_dir, backup_dir, d)
@@ -49,26 +46,22 @@ class Pydumpfs(object):
         print s
 
     def _get_prev_dir(self, dest):
-        from glob import glob
-        pattern = "[0-9]"
+        digit = "[0-9][0-9]*"
+        date_pattern = "{digit}-{digit}-{digit}".format(**locals())
+        time_pattern = "{digit}:{digit}:{digit}".format(**locals())
+        pattern = "{date_pattern}_{time_pattern}".format(**locals())
         try:
-            year = sorted(glob(os.path.join(dest, pattern * 4)))[-1]
+            return sorted(glob(join(dest, pattern)))[-1]
         except IndexError:
             return None
-        else: 
-            month = sorted(glob(os.path.join(year, pattern * 2)))[-1]
-            day = sorted(glob(os.path.join(month, pattern * 2)))[-1]
-            time = sorted(glob(os.path.join(day, 
-                "%s.%s" % (pattern * 6, pattern * 6))))[-1]
-            return os.path.join(dest, year, month, day, time)
 
     def _is_same_file(self, path1, path2):
-        if os.path.isdir(path1) and (not os.path.islink(path1)):
+        if isdir(path1) and (not islink(path1)):
             raise "%(path)r must be a file." % dict(path=path1)
-        if os.path.isdir(path2) and (not os.path.islink(path2)):
+        if isdir(path2) and (not islink(path2)):
             return False
 
-        if (not os.path.lexists(path1)) or (not os.path.lexists(path2)):
+        if (not lexists(path1)) or (not lexists(path2)):
             return False
 
         stat1 = os.lstat(path1)
@@ -93,13 +86,13 @@ class Pydumpfs(object):
         os.lchown(dest, st.st_uid, st.st_gid)
 
     def _change_owner_stat(self, dest, src_dir, src_name):
-        src_path = os.path.join(src_dir, src_name)
+        src_path = join(src_dir, src_name)
         dest_path = dest + src_path
-        if not os.path.lexists(dest_path):
+        if not lexists(dest_path):
             return
 
         self._copy_owner(dest_path, src_path)
-        if not os.path.islink(src_path):
+        if not islink(src_path):
             self._copystat(dest_path, src_path)
 
     def _copystat(self, dest, src):
@@ -137,16 +130,16 @@ class Pydumpfs(object):
                 try:
                     self._change_owner_stat(dest, dirpath, dirname)
                 except OSError, e:
-                    path = dest + os.path.join(dirpath, dirname)
+                    path = dest + join(dirpath, dirname)
                     print >> sys.stderr, "error: Can't change status of the di"\
                         "rectory %(path)r (%(desc)s)." \
                             % dict(path=path, desc=e.strerror)
 
             for filename in filenames:
                 try:
-                    path = os.path.join(dirpath, filename)
+                    path = join(dirpath, filename)
                     st = os.lstat(path)
-                    if stat.S_ISREG(st.st_mode) or os.path.islink(path):
+                    if stat.S_ISREG(st.st_mode) or islink(path):
                         self._change_owner_stat(dest, dirpath, filename)
                 except OSError, e:
                     print >> sys.stderr, "error: Can't change status of the fi"\
@@ -160,10 +153,10 @@ class Pydumpfs(object):
     def _walk_to_copy(self, prev, dest, src, file_func):
         for dirpath, dirnames, filenames in os.walk(src):
             for dirname in dirnames:
-                src_dir = os.path.join(dirpath, dirname)
+                src_dir = join(dirpath, dirname)
                 dest_dir = dest + src_dir
                 try:
-                    if os.path.islink(src_dir):
+                    if islink(src_dir):
                         self._make_link(dest_dir, src_dir)
                     else:
                         self._mkdir(dest_dir)
@@ -173,7 +166,7 @@ class Pydumpfs(object):
                             % dict(path=dest_dir, desc=e.strerror)
 
             for filename in filenames:
-                src_file = os.path.join(dirpath, filename)
+                src_file = join(dirpath, filename)
                 if prev is not None:
                     prev_file = prev + src_file
                 else:
@@ -192,7 +185,7 @@ class Pydumpfs(object):
             st = os.lstat(src)
             if stat.S_ISREG(st.st_mode):
                 self._copy(dest, src)
-            elif os.path.islink(src):
+            elif islink(src):
                 self._make_link(dest, src)
 
         self._walk_to_copy(None, dest, src, _file_func)
@@ -205,7 +198,7 @@ class Pydumpfs(object):
                     self._link(dest, prev)
                 else:
                     self._copy(dest, src)
-            elif os.path.islink(src):
+            elif islink(src):
                 self._make_link(dest, src)
 
         self._walk_to_copy(prev, dest, src, _file_func)
@@ -213,18 +206,18 @@ class Pydumpfs(object):
     def _do(self, prev_dir, backup_dir, src):
         self._print_debug(
             "backup from %(src)s to %(dest)s." % dict(src=src, dest=backup_dir))
-        src = os.path.abspath(src)
+        src = abspath(src)
 
         dest_dir = backup_dir + src
         self._print_debug("makedirs: %(dir)s" % dict(dir=dest_dir))
-        os.makedirs(dest_dir)
+        makedirs(dest_dir)
 
         dir = src
         while dir != "/":
             path = backup_dir + dir
             self._copy_owner(path, dir)
             self._copystat(path, dir)
-            dir = os.path.dirname(dir)
+            dir = dirname(dir)
 
         if prev_dir is None:
             self._copy_recursively(backup_dir, src)
