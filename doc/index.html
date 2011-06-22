@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <title>pydumpfs</title>
+    <style>
+      @font-face {
+        font-family: "mainfont";
+        /**
+         * Copyright Information of Inconsolata.otf
+         * Lisence: Open Font Lisence
+         * Author: Raph Levien
+         * URL: http://www.levien.com/type/myfonts/inconsolata.html
+         */
+        src: url("Inconsolata.otf") format("opentype");
+      }
+      body {
+        font-family: "mainfont";
+      }
+    </style>
+  </head>
+  <body>
+    <h1>pydumpfs</h1>
+    <section>
+      <h1>Description</h1>
+      <p>pydumpfs is a backup tool using hard links. If a file is unchanged,
+      pydumpfs makes a hard link to previous one. So you don't waste disk space.
+      </p>
+      <p>pydumpfs also removes old backups which are more than 93 days old.</p>
+    </section>
+    <section>
+      <h1>Requirements</h1>
+      <ul>
+        <li>FreeBSD 8.2</li>
+        <li>Python 2.6.6</li>
+      </ul>
+    </section>
+    <section>
+      <h1>Download</h1>
+      <ul><li><a href="http://github.com/SumiTomohiko/pydumpfs">
+        http://github.com/SumiTomohiko/pydumpfs
+      </a></li></ul>
+    </section>
+    <section>
+      <h1>Usage</h1>
+      <pre>pydumpfs <var>dest_dir</var> <var>src_dir</var>...</pre>
+      <p>pydumpfs makes a directory under <var>dest_dir</var>. Its name is in
+      the form of <var>yyyy</var>-<var>mm</var>-<var>dd</var>_<var>hour</var>:<var>minute</var>:<var>second</var>.<var>millisecond</var>. You can give more than
+      one <var>src_dir</var>.</p>
+    </section>
+    <section>
+      <h1>Author</h1>
+      <p>The author is
+      <a href="http://neko-daisuki.ddo.jp/~SumiTomohiko">SumiTomohiko</a>.<p>
+    </section>
+  </body>
+</html>
+<!--
+vim: tabstop=2 shiftwidth=2 expandtab softtabstop=2
+-->
