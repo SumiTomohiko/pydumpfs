@@ -1,0 +1,35 @@
+
+pydumpfs
+********
+
+Description
+===========
+
+pydumpfs is a backup tool using hard links. If a file is unchanged, pydumpfs
+makes a hard link to previous one. So you don't waste disk space.
+
+pydumpfs also removes old backups which are more than 93 days old.
+
+Documentation
+=============
+
+See http://neko-daisuki.ddo.jp/~SumiTomohiko/pydumpfs/index.html or ``doc``
+directory.
+
+How to Install
+==============
+
+Run a command like::
+
+  $ python setup.py install --user
+
+How to Test
+===========
+
+Run::
+
+  $ sudo make test
+
+Unit tests for pydumpfs chowns, so it needs root privileges.
+
+.. vim: tabstop=2 shiftwidth=2 expandtab softtabstop=2 filetype=rst
